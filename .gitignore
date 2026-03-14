@@ -1,0 +1,19 @@
+# Python bytecode (compiled files)
+__pycache__/
+*.py[cod]
+
+# Virtual Environment (Very Important!)
+venv/
+ENV/
+.env
+
+# Database (Don't upload your local SQLite or Postgres configs)
+*.sqlite3
+db.sqlite3
+
+# OS specific files
+.DS_Store
+.thumbs.db
+
+# Environment variables (where you'll keep secret API keys)
+.env
