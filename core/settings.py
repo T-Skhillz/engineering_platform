@@ -40,7 +40,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'django.contrib.staticfiles',
 
-    'projects'
+    'projects',
 ]
 
 MIDDLEWARE = [
@@ -104,6 +104,8 @@ else:
             'PORT': '5432',
         }
     }
+
+AUTH_USER_MODEL = 'projects.User'
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
