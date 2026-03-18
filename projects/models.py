@@ -56,6 +56,9 @@ class Profile(models.Model):
         related_name='profile', 
     )
 
+    matric_no = models.CharField(max_length=50, unique=True)
+    is_matric_verified = models.BooleanField(default=False)
+
     academic_year = models.PositiveSmallIntegerField(
         choices=AcademicYear.choices,
         null=True,

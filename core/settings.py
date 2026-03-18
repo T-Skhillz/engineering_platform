@@ -52,14 +52,18 @@ AUTH_USER_MODEL = 'projects.User'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        # 'rest_framework_simplejwt.authentication.JWTStatelessUserAuthentication',
     ),
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=7),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'BLACKLIST_AFTER_ROTATION': True,
     'ROTATE_REFRESH_TOKENS': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'USER_ID_FIELD': 'id', # This works perfectly with your UUID
+    'USER_ID_CLAIM': 'user_id',
 }
 
 MIDDLEWARE = [
