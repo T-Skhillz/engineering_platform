@@ -56,7 +56,7 @@ class Profile(models.Model):
         related_name='profile', 
     )
 
-    matric_no = models.CharField(max_length=50, unique=True)
+    matric_no = models.CharField(max_length=50, unique=True, null=True, blank=True)
     is_matric_verified = models.BooleanField(default=False)
 
     academic_year = models.PositiveSmallIntegerField(

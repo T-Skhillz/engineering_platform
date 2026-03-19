@@ -109,6 +109,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             'avatar_url', 
             'created_at'
             ]
+        read_only_fields = ['matric_no']
         
 class AcademicYearVerificationSerializer(serializers.ModelSerializer):
     user = UserSerializer(many=False, read_only=True)

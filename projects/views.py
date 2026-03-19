@@ -79,6 +79,11 @@ class ChangePasswordView(generics.UpdateAPIView):
     """
     Updates the user's password, invalidates the current session, 
     and returns fresh authentication tokens.
+    
+    ⚠️Security note: blacklisting is best-effort. If the client does not
+    send 'refresh_token', the password still updates and fresh tokens
+    are issued. This is intentional — we prioritise UX over forced
+    session invalidation for this platform's threat model.
     """
     serializer_class = ChangePasswordSerializer
     permission_classes = [IsAuthenticated]
