@@ -112,4 +112,36 @@ class ChangePasswordView(generics.UpdateAPIView):
             'access': str(new_refresh.access_token),
             'refresh': str(new_refresh),
         }, status=status.HTTP_200_OK)
-    
+
+
+class LogoutView(generics.GenericAPIView):
+    """
+    An idempotent endpoint to terminate a user session by blacklisting
+    the provided refresh token.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            refresh_token = request.data.get('refresh_token')
+            
+            # If a token is provided, attempt to invalidate it in the database.
+            if refresh_token:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+
+            # Idempotent logout: all paths return 200 because the end
+            # result is the same regardless of token state — session is over.
+            return Response(
+                {'message': 'Logged out successfully.'}, 
+                status=status.HTTP_200_OK
+            )
+
+        except (TokenError, AttributeError):
+            # We catch errors (like expired or malformed tokens) but still 
+            # return 200. If the token is already invalid, the user is 
+            # technically already "logged out."
+            return Response(
+                {'message': 'Session ended.'}, 
+                status=status.HTTP_200_OK
+            )
