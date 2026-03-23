@@ -3,7 +3,7 @@ from projects.models import User, Profile, Admin
 
 def create_admin_user(*, validated_data):
     """
-    Orchestrates the creation of a User, their Profile, and their Admin record.
+    Handles the creation of a User, their Profile, and their Admin record.
     
     This function ensures that an Admin is never created without a corresponding 
     Profile and Staff Number. Using @transaction.atomic ensures that if any 

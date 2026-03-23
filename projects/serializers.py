@@ -130,89 +130,89 @@ class UserSerializer(serializers.ModelSerializer):
             'last_name': {'required': True} 
         }
 
-class ProfileSerializer(serializers.ModelSerializer):
-    user = UserSerializer(many=False, read_only=True)
-    full_name = serializers.ReadOnlyField() #From @property
-    class Meta:
-        model = Profile
-        fields = [
-            'id', 
-            'user', 
-            'full_name', 
-            'matric_no',
-            'academic_year', 
-            'institution', 
-            'discipline', 
-            'is_matric_verified',
-            'bio', 
-            'avatar_url', 
-            'created_at'
-            ]
-        read_only_fields = ['matric_no']
+# class ProfileSerializer(serializers.ModelSerializer):
+#     user = UserSerializer(many=False, read_only=True)
+#     full_name = serializers.ReadOnlyField() #From @property
+#     class Meta:
+#         model = Profile
+#         fields = [
+#             'id', 
+#             'user', 
+#             'full_name', 
+#             'matric_no',
+#             'academic_year', 
+#             'institution', 
+#             'discipline', 
+#             'is_matric_verified',
+#             'bio', 
+#             'avatar_url', 
+#             'created_at'
+#             ]
+#         read_only_fields = ['matric_no']
         
-class AcademicYearVerificationSerializer(serializers.ModelSerializer):
-    user = UserSerializer(many=False, read_only=True)
-    verified_by = UserSerializer(many=False, read_only=True)
+# class AcademicYearVerificationSerializer(serializers.ModelSerializer):
+#     user = UserSerializer(many=False, read_only=True)
+#     verified_by = UserSerializer(many=False, read_only=True)
     
-    # 'matric_no' is write_only because we only need it to look up the student 
-    # during creation. In the response, the full 'user' object is returned instead.
-    matric_no = serializers.CharField(write_only=True)
-    profile = ProfileSerializer(many=False, read_only=True)
+#     # 'matric_no' is write_only because we only need it to look up the student 
+#     # during creation. In the response, the full 'user' object is returned instead.
+#     matric_no = serializers.CharField(write_only=True)
+#     profile = ProfileSerializer(many=False, read_only=True)
 
-    class Meta:
-        model = AcademicYearVerification
-        fields = [
-            'id', 
-            'user', 
-            'matric_no',
-            'verified_by', 
-            'year_granted',
-            'note',
-            'created_at',
-            'profile'
-            ]
+#     class Meta:
+#         model = AcademicYearVerification
+#         fields = [
+#             'id', 
+#             'user', 
+#             'matric_no',
+#             'verified_by', 
+#             'year_granted',
+#             'note',
+#             'created_at',
+#             'profile'
+#             ]
         
-    def validate_matric_no(self, value):
-        """
-        Field-level validation to resolve a Matric Number string into a User instance.
+#     def validate_matric_no(self, value):
+#         """
+#         Field-level validation to resolve a Matric Number string into a User instance.
         
-        This ensures that the provided matric number actually belongs to an 
-        existing student before we attempt to create a verification record.
-        """
-        try:
-            # We perform a reverse lookup: Profile -> User
-            # Using select_related here would optimize this if needed
-            user = User.objects.get(profile__matric_no=value)
+#         This ensures that the provided matric number actually belongs to an 
+#         existing student before we attempt to create a verification record.
+#         """
+#         try:
+#             # We perform a reverse lookup: Profile -> User
+#             # Using select_related here would optimize this if needed
+#             user = User.objects.get(profile__matric_no=value)
             
-        except User.DoesNotExist:
-            # A clear, specific error for the Admin/Teacher
-            raise serializers.ValidationError("No student found with that matric number.")
+#         except User.DoesNotExist:
+#             # A clear, specific error for the Admin/Teacher
+#             raise serializers.ValidationError("No student found with that matric number.")
         
-        # Check if the user already has an associated verification record.
-        # 'verification' is the related_name defined in your AcademicYearVerification model.
-        if hasattr(user, 'verification'):
-            # Prevent duplicate verifications to maintain data integrity.
-            # In a real university system, a student should only have one active 
-            # status per academic cycle.
-            raise serializers.ValidationError(
-                "This student has already been officially verified for the current period."
-                )
+#         # Check if the user already has an associated verification record.
+#         # 'verification' is the related_name defined in your AcademicYearVerification model.
+#         if hasattr(user, 'verification'):
+#             # Prevent duplicate verifications to maintain data integrity.
+#             # In a real university system, a student should only have one active 
+#             # status per academic cycle.
+#             raise serializers.ValidationError(
+#                 "This student has already been officially verified for the current period."
+#                 )
         
-        # We return the actual User object. DRF is smart enough to pass 
-        # this object into 'validated_data' instead of the raw string.
-        return user
+#         # We return the actual User object. DRF is smart enough to pass 
+#         # this object into 'validated_data' instead of the raw string.
+#         return user
 
-    def create(self, validated_data):
-        """
-        Custom create method to handle the linked User object and 
-        persist the Verification record.
-        """
-        # Pull the User object we resolved in 'validate_matric_no'
-        user = validated_data.pop('matric_no')
+#     def create(self, validated_data):
+#         """
+#         Custom create method to handle the linked User object and 
+#         persist the Verification record.
+#         """
+#         # Pull the User object we resolved in 'validate_matric_no'
+#         user = validated_data.pop('matric_no')
         
-        # Create the verification record linked to the verified student
-        # Note: 'verified_by' is usually passed from the view's perform_create
-        return AcademicYearVerification.objects.create(user=user, **validated_data)
+#         # Create the verification record linked to the verified student
+#         # Note: 'verified_by' is usually passed from the view's perform_create
+#         return AcademicYearVerification.objects.create(user=user, **validated_data)
     
 
 class ChangePasswordSerializer(serializers.Serializer):
