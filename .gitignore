@@ -17,3 +17,8 @@ db.sqlite3
 
 # Environment variables (where you'll keep secret API keys)
 .env
+
+
+#random files
+schema.sql
+NOTE
