@@ -1,6 +1,6 @@
 from django.db import transaction
 from django.utils import timezone
-from .models import Verification, Student, VerificationStatus
+from projects.models import Verification, Student, VerificationStatus
 
 # Defines the valid state machine transitions to ensure data integrity
 ALLOWED_TRANSITIONS = {

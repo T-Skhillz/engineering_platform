@@ -133,6 +133,11 @@ class VerificationStatus(models.TextChoices):
 #--------------------------------------------------------------------------------------------------------------
 
 class User(AbstractUser):
+    class Role(models.TextChoices):
+        ADMIN = "ADMIN"
+        TEACHER = "TEACHER"
+        STUDENT = "STUDENT"
+
     # This overrides the default 'id' field
     id = models.UUIDField(
         primary_key=True, 
@@ -141,10 +146,11 @@ class User(AbstractUser):
     )
 
     email = models.EmailField(max_length=254, unique=True)
+    role = models.CharField(max_length=20, choices=Role.choices, default=Role.STUDENT)
 
     # Fields prompted for when running 'python manage.py createsuperuser' 
     # (username and password are required by default and shouldn't be included here)
-    REQUIRED_FIELDS = ['email', 'first_name', 'last_name']
+    REQUIRED_FIELDS = ['email', 'first_name', 'last_name', 'role']
 
     def __str__(self):
         return self.username

@@ -1,84 +1,123 @@
 from rest_framework import serializers
-from projects.models import User, Profile, AcademicYearVerification
+from projects.models import User, Admin, Institution, Department
 from django.db import transaction
+from projects.services.admin_service import create_admin_user
 
-class RegisterSerializer(serializers.ModelSerializer):
+
+class RegisterAdminSerializer(serializers.ModelSerializer):
+    # Explicitly defining these fields to make them 'required' at the API level
     first_name = serializers.CharField(required=True)
     last_name = serializers.CharField(required=True)
+    
+    # write_only ensures the password is never sent back in an API response
     password = serializers.CharField(write_only=True, min_length=8)
 
-     # Profile fields
-    institution = serializers.CharField(required=False, allow_blank=True)
-    matric_no = serializers.CharField(required=False, allow_blank=True)
-    discipline = serializers.CharField(required=False, allow_blank=True)
-    academic_year = serializers.ChoiceField(
-        choices=Profile.AcademicYear.choices,
-        required=False,
-        allow_null=True
+    # Relational fields to link the Admin to existing Database objects
+    institution = serializers.PrimaryKeyRelatedField(
+        queryset=Institution.objects.all()
     )
+    department = serializers.PrimaryKeyRelatedField(
+        queryset=Department.objects.all()
+    )
+
+    staff_number = serializers.CharField(required=True)
 
     class Meta:
         model = User
         fields = [
-            'username', 'email', 'password',
-            'first_name', 'last_name', 'role', 'matric_no',
-            'institution', 'discipline', 'academic_year'
+            'username', 'email', 'password', 
+            'first_name', 'last_name', 
+            'institution', 'department', 
+            'staff_number',
         ]
-        extra_kwargs = {'password': {'write_only': True}}
+
+    def validate_staff_number(self, value):
+        """
+        Field-level validation: Ensures staff numbers are unique in the Admin table.
+        """
+        if Admin.objects.filter(staff_number=value).exists():
+            raise serializers.ValidationError(
+                "An admin with this staff number already exists."
+            )
+        return value
 
     def validate(self, data):
         """
-        Final integrity check before saving to the database.
-        Ensures roles match identifiers and prevents duplicate matric numbers.
+        Object-level validation: Checks the relationship between Institution and Department.
+        Prevents a user from picking a Department that doesn't belong to the selected Institution.
         """
-        role = data.get('role', User.Role.STUDENT)
-        matric_no = data.get('matric_no', None)
+        institution = data.get('institution')
+        department = data.get('department')
 
-        # 1. Role-based Identifier Check
-        if matric_no and role != User.Role.STUDENT:
-            raise serializers.ValidationError({
-                "matric_no": "Only students can have a matriculation number."
-            })
-
-        # 2. Student Requirement Check
-        if role == User.Role.STUDENT and not matric_no:
-            raise serializers.ValidationError({
-                "matric_no": "Students must provide a matriculation number to register."
-            })
-
-        # 3. Manual Uniqueness Check (The "Double Lock")
-        # We check the Profile table to see if this matric_no is already taken.
-        if matric_no:
-            exists = Profile.objects.filter(matric_no=matric_no).exists()
-            if exists:
+        if department and institution:
+            # Check the 'chain': Department -> Faculty -> Institution
+            if not department.faculty or department.faculty.institution != institution:
                 raise serializers.ValidationError({
-                    "matric_no": "A student with this matric number is already registered."
+                    "department": "This department does not belong to the selected institution."
                 })
 
         return data
 
     def create(self, validated_data):
-        with transaction.atomic():
-            # Extract profile-specific data
-            # Use .pop() to remove them from validated_data so create_user doesn't get confused
-            institution = validated_data.pop('institution', '')
-            discipline = validated_data.pop('discipline', '')
-            academic_year = validated_data.pop('academic_year', None)
-            matric_no = validated_data.pop('matric_no', None)
+        """
+        Hands off the actual database insertion to the service function.
+        """
+        return create_admin_user(validated_data=validated_data)
 
-            # 1. Create User (Hashed password)
-            user = User.objects.create_user(**validated_data)
 
-            # 2. Create Profile linked to User
-            Profile.objects.create(
-                user=user, 
-                institution=institution,
-                discipline=discipline,
-                academic_year=academic_year,
-                matric_no=matric_no
-            )
+    # def validate(self, data):
+    #     """
+    #     Final integrity check before saving to the database.
+    #     Ensures roles match identifiers and prevents duplicate matric numbers.
+    #     """
+    #     role = data.get('role', User.Role.STUDENT)
+    #     matric_no = data.get('matric_no', None)
+
+    #     # 1. Role-based Identifier Check
+    #     if matric_no and role != User.Role.STUDENT:
+    #         raise serializers.ValidationError({
+    #             "matric_no": "Only students can have a matriculation number."
+    #         })
+
+    #     # 2. Student Requirement Check
+    #     if role == User.Role.STUDENT and not matric_no:
+    #         raise serializers.ValidationError({
+    #             "matric_no": "Students must provide a matriculation number to register."
+    #         })
+
+    #     # 3. Manual Uniqueness Check (The "Double Lock")
+    #     # We check the Profile table to see if this matric_no is already taken.
+    #     if matric_no:
+    #         exists = Profile.objects.filter(matric_no=matric_no).exists()
+    #         if exists:
+    #             raise serializers.ValidationError({
+    #                 "matric_no": "A student with this matric number is already registered."
+    #             })
+
+    #     return data
+
+    # def create(self, validated_data):
+    #     with transaction.atomic():
+    #         # Extract profile-specific data
+    #         # Use .pop() to remove them from validated_data so create_user doesn't get confused
+    #         institution = validated_data.pop('institution', '')
+    #         discipline = validated_data.pop('discipline', '')
+    #         academic_year = validated_data.pop('academic_year', None)
+    #         matric_no = validated_data.pop('matric_no', None)
+
+    #         # 1. Create User (Hashed password)
+    #         user = User.objects.create_user(**validated_data)
+
+    #         # 2. Create Profile linked to User
+    #         Profile.objects.create(
+    #             user=user, 
+    #             institution=institution,
+    #             discipline=discipline,
+    #             academic_year=academic_year,
+    #             matric_no=matric_no
+    #         )
             
-            return user
+    #         return user
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
