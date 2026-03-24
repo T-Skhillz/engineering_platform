@@ -27,9 +27,10 @@ def create_admin_user(*, validated_data):
 
         # 2. Create the base Identity (The User)
         # create_user handles password hashing automatically.
-        user = User.objects.create_user(**validated_data)
-        user.role = User.Role.ADMIN
-        user.save()
+        user = User.objects.create_user(
+            **validated_data,
+            role = User.Role.ADMIN
+            )
 
         # 3. Create the Personal Data layer (The Profile)
         # Links the User to their organizational metadata.
