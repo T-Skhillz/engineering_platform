@@ -1,12 +1,12 @@
 from django.db import transaction
-from projects.models import User, Profile, Teacher
+from projects.models import User, Profile, Student
 
-def create_teacher_user(*, validated_data):
+def create_student_user(*, validated_data):
     """
-    Handles the creation of a User, their Profile, and their Teacher record.
+    Handles the creation of a User, their Profile, and their Student record.
 
-    This function ensures that a teacher is never created without a corresponding
-    Profile and Staff Number. Using @transaction.atomic ensures that if any part
+    This function ensures that a student is never created without a corresponding
+    Profile and Matric Number. Using @transaction.atomic ensures that if any part
     of this proces fails, no partial data is saved 
 
     Args:
@@ -21,20 +21,19 @@ def create_teacher_user(*, validated_data):
         # 1. Pop non-User fields.
         institution = validated_data.pop('institution', None)
         department = validated_data.pop('department', None)
-        staff_number = validated_data.pop('staff_number', None)
-        title = validated_data.pop('title', None)
-        rank = validated_data.pop('rank', None)
+        matric_number = validated_data.pop('matric_number', None)
+        entry_date = validated_data.pop('entry_date', None)
 
         # 2. Validation check to ensure all pieces of data are present
-        if not all([institution, department, staff_number, title, rank]):
-            raise ValueError("Missing required teacher fields")
+        if not all([institution, department, matric_number, entry_date]):
+            raise ValueError("Missing required student fields")
 
         # 3. Create the base Identity (The User)
         user = User.objects.create_user(
             **validated_data,
-            role=User.Role.TEACHER
+            role=User.Role.STUDENT
             )
-
+        
         # 4. Create the Personal Data layer (The profile)
         profile = Profile.objects.create(
             user=user,
@@ -42,12 +41,11 @@ def create_teacher_user(*, validated_data):
             department=department,
         )
 
-        # 5. Create the professional Identity (The Teacher)
-        Teacher.objects.create(
-            profile=profile,
-            staff_number=staff_number,
-            title=title,
-            rank=rank,
+        # 5. Create the academic Identity (The Student)
+        Student.objects.create(
+            profile=profile,            
+            matric_number=matric_number,
+            entry_date=entry_date,
         )
 
         return user

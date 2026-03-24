@@ -3,6 +3,7 @@ from projects.models import User, Admin, Teacher, Student, Institution, Departme
 
 from projects.services.admin_service import create_admin_user
 from projects.services.teacher_service import create_teacher_user
+from projects.services.student_service import create_student_user
 
 
 class RegisterAdminSerializer(serializers.ModelSerializer):
@@ -64,6 +65,8 @@ class RegisterAdminSerializer(serializers.ModelSerializer):
         Hands off the actual database insertion to the service function.
         """
         return create_admin_user(validated_data=validated_data)
+
+
 
 
 
@@ -129,6 +132,113 @@ class RegisterTeacherSerializer(serializers.ModelSerializer):
         Hands off the actual database insertion to the service function.
         """
         return create_teacher_user(validated_data=validated_data)
+
+
+
+
+
+class RegisterStudentSerializer(serializers.ModelSerializer):
+    # Explicitly defining these fields to make them 'required' at the API level
+    first_name = serializers.CharField(required=True)
+    last_name = serializers.CharField(required=True)
+    
+    # write_only ensures the password is never sent back in an API response
+    password = serializers.CharField(write_only=True, min_length=8)
+
+    # Relational fields to link the Student to existing Database objects
+    institution = serializers.PrimaryKeyRelatedField(
+        queryset=Institution.objects.all()
+    )
+    department = serializers.PrimaryKeyRelatedField(
+        queryset=Department.objects.all()
+    )
+
+    matric_number = serializers.CharField(required=True)
+    entry_date = serializers.DateField()
+
+    class Meta:
+        model = User
+        fields = [
+            'username', 'email', 'password', 
+            'first_name', 'last_name', 
+            'institution', 'department', 
+            'matric_number', 'entry_date',
+        ]
+
+    def validate_matric_number(self, value):
+        """
+        Field-level validation: Ensures matric numbers are unique in the Student table.
+        """
+        if Student.objects.filter(staff_number=value).exists():
+            raise serializers.ValidationError(
+                "A Student with this matric number already exists"
+            )
+        return value
+    
+    def validate(self, data):
+        """
+        Object-level validation: Checks the relationship between Institution and Department.
+        Prevents a user from picking a Department that doesn't belong to the selected Institution.
+        """
+        institution = data.get('institution')
+        department = data.get('department')
+
+        if department and institution:
+            # Check the 'chain': Department -> Faculty -> Institution
+            if department.faculty.institution_id != institution.id:
+                raise serializers.ValidationError({
+                    "department": "This department does not belong to the selected institution."
+                })
+        
+        return data
+    
+    def create(self, validated_data):
+        """
+        Hands off the actual database insertion to the service function.
+        """
+        return create_student_user(validated_data=validated_data)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     # def validate(self, data):
     #     """

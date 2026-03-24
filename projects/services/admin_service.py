@@ -25,14 +25,18 @@ def create_admin_user(*, validated_data):
         department = validated_data.pop('department')
         staff_number = validated_data.pop('staff_number')
 
-        # 2. Create the base Identity (The User)
+        # 2. Validation check to ensure all three pieces of data are present
+        if not all([institution, department, staff_number]):
+            raise ValueError("Missing required teacher fields")
+
+        # 3. Create the base Identity (The User)
         # create_user handles password hashing automatically.
         user = User.objects.create_user(
             **validated_data,
             role = User.Role.ADMIN
             )
 
-        # 3. Create the Personal Data layer (The Profile)
+        # 4. Create the Personal Data layer (The Profile)
         # Links the User to their organizational metadata.
         profile = Profile.objects.create(
             user=user,
@@ -40,7 +44,7 @@ def create_admin_user(*, validated_data):
             department=department,
         )
 
-        # 4. Create the Professional Identity (The Admin)
+        # 5. Create the Professional Identity (The Admin)
         # Final step: assigning the staff number to the profile.
         Admin.objects.create(
             profile=profile,
