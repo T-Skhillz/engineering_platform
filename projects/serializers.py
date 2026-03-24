@@ -1,9 +1,14 @@
 from rest_framework import serializers
-from projects.models import User, Admin, Teacher, Student, Profile, Institution, Department
+from projects.models import User, Admin, Teacher, Student, Profile, Verification, Institution, Department
+from projects.models import Verification, VerificationStatus
+
+from projects.services import ALLOWED_TRANSITIONS
 
 from projects.services.admin_service import create_admin_user
 from projects.services.teacher_service import create_teacher_user
 from projects.services.student_service import create_student_user
+from projects.services.verification_status_service import process_student_verification 
+
 
 
 class RegisterAdminSerializer(serializers.ModelSerializer):
@@ -235,6 +240,140 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 
 
+
+
+
+# class VerificationSerializer(serializers.ModelSerializer):
+#     # We want to show these, but they are handled by the logic/request context
+#     status = serializers.ChoiceField(choices=VerificationStatus.choices)
+#     matric_number = serializers.CharField(write_only=True)
+#     class Meta:
+#         model = Verification
+#         fields = [
+#             'id', 'verifier', 
+#             'session', 'status', 'created_at',
+#         ]
+#         read_only_fields = ['id','user', 'created_at', 'verifier']
+
+#     def validate(self, data):
+#         """
+#         Check that the status transition is valid before attempting to save.
+#         """
+
+#         matric_number = data.get('matric_number')
+#         try:
+#             user = User.objects.get(profile__student__matric_number=matric_number)
+#         except User.DoesNotExist:
+#             raise serializers.ValidationError("No student found with that matric number.")
+#         data['user'] = user
+
+#         user = data.get('user')
+#         new_status = data.get('status')
+
+#         # We can perform a 'dry run' check of the state machine here
+#         # to return a clean 400 Bad Request instead of a 500 Server Error
+#         current_status = user.profile.student.verification_status
+        
+#         if new_status not in ALLOWED_TRANSITIONS.get(current_status, set()):
+#             raise serializers.ValidationError(
+#                 f"Cannot change status from {current_status} to {new_status}."
+#             )
+            
+#         return data
+
+#     def create(self, validated_data):
+#         """
+#         Override create to use the atomic logic function in verification_status_service.
+#         """
+#         # The verifier is usually the logged-in user (the teacher/admin)
+#         verifier = self.context['request'].user
+        
+#         try:
+#             verification, _ = process_student_verification(
+#                 user=validated_data['user'],
+#                 status=validated_data['status'],
+#                 verifier=verifier,
+#                 session=validated_data.get('session')
+#             )
+#             return verification
+#         except ValueError as e:
+#             # Catch the specific errors raised in the logic function
+#             raise serializers.ValidationError(str(e))
+
+
+class VerificationSerializer(serializers.ModelSerializer):
+    """
+    Serializes student verification attempts and enforces the business 
+    logic for status transitions (State Machine).
+    """
+    
+    # Explicitly defined to validate against the VerificationStatus Enum
+    status = serializers.ChoiceField(choices=VerificationStatus.choices)
+    
+    # Input-only field used to identify the student without exposing it in the response
+    matric_number = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = Verification
+        fields = [
+            'id', 'verifier', 'session', 
+            'status', 'created_at', 'matric_number'
+        ]
+        # Prevents client-side tampering with system-controlled fields
+        read_only_fields = ['id', 'user', 'created_at', 'verifier']
+
+    def validate(self, data):
+        """
+        Cross-field validation to ensure the student exists and the 
+        requested status transition is valid for their current state.
+        """
+        matric_number = data.get('matric_number')
+        
+        # 1. Identity Resolution: Map the external matric_number to an internal User object
+        try:
+            # Select_related or prefetch_related should be handled in the ViewSet 
+            # for performance, but we perform the existence check here.
+            user = User.objects.get(profile__student__matric_number=matric_number)
+            data['user'] = user
+        except User.DoesNotExist:
+            raise serializers.ValidationError({"matric_number": "No student found with this matric number."})
+
+        # 2. State Machine Enforcement: 
+        # Prevent "illegal" jumps (e.g., from 'Pending' to 'Re-issued' directly)
+        current_status = user.profile.student.verification_status
+        new_status = data.get('status')
+
+        if new_status not in ALLOWED_TRANSITIONS.get(current_status, set()):
+            raise serializers.ValidationError(
+                f"Transition error: Moving from '{current_status}' to '{new_status}' is not permitted."
+            )
+            
+        return data
+
+    def create(self, validated_data):
+        """
+        Custom create method that offloads persistence to a service function.
+        Ensures atomicity between creating the log and updating the student profile.
+        """
+        # Cleanup write-only fields not needed by the service layer
+        validated_data.pop('matric_number', None)
+
+        # Audit Trail: Identify the admin/teacher performing the action
+        verifier = self.context['request'].user
+        
+        try:
+            # We delegate to process_student_verification to keep this Serializer 
+            # lean and ensure this logic is reusable outside of the API context.
+            verification, _ = process_student_verification(
+                user=validated_data['user'],
+                status=validated_data['status'],
+                verifier=verifier,
+                session=validated_data.get('session')
+            )
+            return verification
+        except ValueError as e:
+            # Convert domain-level ValueErrors into API-friendly ValidationErrors
+            raise serializers.ValidationError(str(e))
 
 
 
