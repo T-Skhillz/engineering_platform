@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from projects.models import User, Admin, Teacher, Student, Institution, Department
+from projects.models import User, Admin, Teacher, Student, Profile, Institution, Department
 
 from projects.services.admin_service import create_admin_user
 from projects.services.teacher_service import create_teacher_user
@@ -203,6 +203,35 @@ class RegisterStudentSerializer(serializers.ModelSerializer):
 
 
 
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role']
+        extra_kwargs = {
+            'role': {'read_only': True},  # Users can see their role, but not change it
+            'email': {'required': True},
+            'first_name': {'required': True},
+            'last_name': {'required': True} 
+        }
+
+
+
+
+
+class ProfileSerializer(serializers.ModelSerializer):
+    user = UserSerializer(many=False, read_only=True)
+    full_name = serializers.ReadOnlyField() #From @property
+    institution = serializers.StringRelatedField()
+    department = serializers.StringRelatedField()
+    class Meta:
+        model = Profile
+        fields = [
+            'id', 'user', 'full_name', 
+            'institution', 'department',
+            'bio', 'avatar_url', 
+            'created_at'
+            ]
+        read_only_fields = ['created_at', 'id']
 
 
 
@@ -294,36 +323,7 @@ class RegisterStudentSerializer(serializers.ModelSerializer):
             
     #         return user
 
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role']
-        extra_kwargs = {
-            'role': {'read_only': True},  # Users can see their role, but not change it
-            'email': {'required': True},
-            'first_name': {'required': True},
-            'last_name': {'required': True} 
-        }
 
-# class ProfileSerializer(serializers.ModelSerializer):
-#     user = UserSerializer(many=False, read_only=True)
-#     full_name = serializers.ReadOnlyField() #From @property
-#     class Meta:
-#         model = Profile
-#         fields = [
-#             'id', 
-#             'user', 
-#             'full_name', 
-#             'matric_no',
-#             'academic_year', 
-#             'institution', 
-#             'discipline', 
-#             'is_matric_verified',
-#             'bio', 
-#             'avatar_url', 
-#             'created_at'
-#             ]
-#         read_only_fields = ['matric_no']
         
 # class AcademicYearVerificationSerializer(serializers.ModelSerializer):
 #     user = UserSerializer(many=False, read_only=True)
