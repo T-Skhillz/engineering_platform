@@ -170,8 +170,8 @@ class Profile(models.Model):
         related_name='profile', 
     )
 
-    institution = models.ForeignKey(Institution, on_delete=models.SET_NULL, null=True, blank=True, related_name='institution_profiles')
-    department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, related_name='deparment_profiles')
+    institution = models.ForeignKey(Institution, on_delete=models.SET_NULL, null=True, blank=True, related_name='institution_profile')
+    department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, related_name='department_profile')
     bio = models.TextField(blank=True, null=True)
     avatar_url = models.URLField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -201,7 +201,7 @@ class Admin(models.Model):
         default=uuid.uuid4, 
         editable=False
     )
-    profile = models.OneToOneField(Profile, on_delete=models.CASCADE, related_name='admin')
+    profile = models.OneToOneField(Profile, on_delete=models.CASCADE, related_name='admin_profile')
     staff_number = models.CharField(max_length=30, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     # 3. Should the admin table have a rank/title attribute?
@@ -232,7 +232,7 @@ class Teacher(models.Model):
         default=uuid.uuid4, 
         editable=False
     )
-    profile = models.OneToOneField(Profile, on_delete=models.CASCADE, related_name='teacher')
+    profile = models.OneToOneField(Profile, on_delete=models.CASCADE, related_name='teacher_profile')
     title = models.CharField(max_length=50)
     rank = models.CharField(max_length=100, choices=RANK_CHOICES, default='Lecturer II')
     staff_number = models.CharField(max_length=30, unique=True)
@@ -252,7 +252,7 @@ class Student(models.Model):
         default=uuid.uuid4, 
         editable=False
     )
-    profile = models.OneToOneField(Profile, on_delete=models.CASCADE, related_name='student')
+    profile = models.OneToOneField(Profile, on_delete=models.CASCADE, related_name='student_profile')
     matric_number = models.CharField(max_length=30, unique=True)
     # 1. remember to write a regex validator for the matric and staff number
     entry_date = models.DateField()
@@ -277,8 +277,9 @@ class Verification(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     
     # The student being verified
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='verifications')
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='verifications_received')
     
+    # The teacher/admin doing the verification
     # SET_NULL — record survives if verifier leaves the platform
     verifier = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='verifications_made')
     
@@ -292,7 +293,7 @@ class Verification(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user.username} — {self.status}"
+        return f"{self.student.username} — {self.status}"
 
     class Meta:
         verbose_name = "Verification"

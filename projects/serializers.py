@@ -242,65 +242,6 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 
 
-
-# class VerificationSerializer(serializers.ModelSerializer):
-#     # We want to show these, but they are handled by the logic/request context
-#     status = serializers.ChoiceField(choices=VerificationStatus.choices)
-#     matric_number = serializers.CharField(write_only=True)
-#     class Meta:
-#         model = Verification
-#         fields = [
-#             'id', 'verifier', 
-#             'session', 'status', 'created_at',
-#         ]
-#         read_only_fields = ['id','user', 'created_at', 'verifier']
-
-#     def validate(self, data):
-#         """
-#         Check that the status transition is valid before attempting to save.
-#         """
-
-#         matric_number = data.get('matric_number')
-#         try:
-#             user = User.objects.get(profile__student__matric_number=matric_number)
-#         except User.DoesNotExist:
-#             raise serializers.ValidationError("No student found with that matric number.")
-#         data['user'] = user
-
-#         user = data.get('user')
-#         new_status = data.get('status')
-
-#         # We can perform a 'dry run' check of the state machine here
-#         # to return a clean 400 Bad Request instead of a 500 Server Error
-#         current_status = user.profile.student.verification_status
-        
-#         if new_status not in ALLOWED_TRANSITIONS.get(current_status, set()):
-#             raise serializers.ValidationError(
-#                 f"Cannot change status from {current_status} to {new_status}."
-#             )
-            
-#         return data
-
-#     def create(self, validated_data):
-#         """
-#         Override create to use the atomic logic function in verification_status_service.
-#         """
-#         # The verifier is usually the logged-in user (the teacher/admin)
-#         verifier = self.context['request'].user
-        
-#         try:
-#             verification, _ = process_student_verification(
-#                 user=validated_data['user'],
-#                 status=validated_data['status'],
-#                 verifier=verifier,
-#                 session=validated_data.get('session')
-#             )
-#             return verification
-#         except ValueError as e:
-#             # Catch the specific errors raised in the logic function
-#             raise serializers.ValidationError(str(e))
-
-
 class VerificationSerializer(serializers.ModelSerializer):
     """
     Serializes student verification attempts and enforces the business 
@@ -379,6 +320,39 @@ class VerificationSerializer(serializers.ModelSerializer):
 
 
 
+class ChangePasswordSerializer(serializers.Serializer):
+    """
+    Handles secure password updates by validating the current credentials
+    before applying the new hashed password.
+    """
+    # write_only=True ensures passwords never leak into outgoing API responses
+    old_password = serializers.CharField(write_only=True, required=True)
+    new_password = serializers.CharField(write_only=True, required=True, min_length=8)
+
+    def validate_old_password(self, value):
+        """
+        Security Check: Verifies that the 'old_password' matches the current 
+        authenticated user's password in the database.
+        """
+        user = self.context['request'].user
+        
+        # Django's check_password() handles the heavy lifting of 
+        # comparing the input against the stored PBKDF2 hash.
+        if not user.check_password(value):
+            raise serializers.ValidationError("Old password is incorrect.")
+        return value
+
+    def save(self):
+        """
+        Persists the new password. set_password() automatically handles 
+        salting and hashing before saving to the database.
+        """
+        user = self.context['request'].user
+        
+        # We use set_password to ensure the new password is encrypted 
+        # and not stored as plain text.
+        user.set_password(self.validated_data['new_password'])
+        user.save()
 
 
 
@@ -389,6 +363,66 @@ class VerificationSerializer(serializers.ModelSerializer):
 
 
 
+
+
+
+
+# class VerificationSerializer(serializers.ModelSerializer):
+#     # We want to show these, but they are handled by the logic/request context
+#     status = serializers.ChoiceField(choices=VerificationStatus.choices)
+#     matric_number = serializers.CharField(write_only=True)
+#     class Meta:
+#         model = Verification
+#         fields = [
+#             'id', 'verifier', 
+#             'session', 'status', 'created_at',
+#         ]
+#         read_only_fields = ['id','user', 'created_at', 'verifier']
+
+#     def validate(self, data):
+#         """
+#         Check that the status transition is valid before attempting to save.
+#         """
+
+#         matric_number = data.get('matric_number')
+#         try:
+#             user = User.objects.get(profile__student__matric_number=matric_number)
+#         except User.DoesNotExist:
+#             raise serializers.ValidationError("No student found with that matric number.")
+#         data['user'] = user
+
+#         user = data.get('user')
+#         new_status = data.get('status')
+
+#         # We can perform a 'dry run' check of the state machine here
+#         # to return a clean 400 Bad Request instead of a 500 Server Error
+#         current_status = user.profile.student.verification_status
+        
+#         if new_status not in ALLOWED_TRANSITIONS.get(current_status, set()):
+#             raise serializers.ValidationError(
+#                 f"Cannot change status from {current_status} to {new_status}."
+#             )
+            
+#         return data
+
+#     def create(self, validated_data):
+#         """
+#         Override create to use the atomic logic function in verification_status_service.
+#         """
+#         # The verifier is usually the logged-in user (the teacher/admin)
+#         verifier = self.context['request'].user
+        
+#         try:
+#             verification, _ = process_student_verification(
+#                 user=validated_data['user'],
+#                 status=validated_data['status'],
+#                 verifier=verifier,
+#                 session=validated_data.get('session')
+#             )
+#             return verification
+#         except ValueError as e:
+#             # Catch the specific errors raised in the logic function
+#             raise serializers.ValidationError(str(e))
 
 
 
@@ -529,36 +563,3 @@ class VerificationSerializer(serializers.ModelSerializer):
 #         return AcademicYearVerification.objects.create(user=user, **validated_data)
     
 
-class ChangePasswordSerializer(serializers.Serializer):
-    """
-    Handles secure password updates by validating the current credentials
-    before applying the new hashed password.
-    """
-    # write_only=True ensures passwords never leak into outgoing API responses
-    old_password = serializers.CharField(write_only=True, required=True)
-    new_password = serializers.CharField(write_only=True, required=True, min_length=8)
-
-    def validate_old_password(self, value):
-        """
-        Security Check: Verifies that the 'old_password' matches the current 
-        authenticated user's password in the database.
-        """
-        user = self.context['request'].user
-        
-        # Django's check_password() handles the heavy lifting of 
-        # comparing the input against the stored PBKDF2 hash.
-        if not user.check_password(value):
-            raise serializers.ValidationError("Old password is incorrect.")
-        return value
-
-    def save(self):
-        """
-        Persists the new password. set_password() automatically handles 
-        salting and hashing before saving to the database.
-        """
-        user = self.context['request'].user
-        
-        # We use set_password to ensure the new password is encrypted 
-        # and not stored as plain text.
-        user.set_password(self.validated_data['new_password'])
-        user.save()
