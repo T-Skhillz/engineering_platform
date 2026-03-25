@@ -1,15 +1,22 @@
 from django.shortcuts import get_object_or_404
-from projects.models import Profile, AcademicYearVerification
-from projects.serializers import RegisterSerializer, ProfileSerializer, AcademicYearVerificationSerializer, ChangePasswordSerializer
+from projects.models import Profile, Verification
+from projects.serializers import RegisterAdminSerializer, RegisterTeacherSerializer, RegisterStudentSerializer, ProfileSerializer, VerificationSerializer, ChangePasswordSerializer
 from rest_framework import generics, status
+
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from projects.permissions import IsAdminOrTeacher
+
 from rest_framework.response import Response
+
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
-class RegisterView(generics.CreateAPIView):
-    serializer_class = RegisterSerializer
+
+
+
+
+class RegisterAdminView(generics.CreateAPIView):
+    serializer_class = RegisterAdminSerializer
     permission_classes = [AllowAny] #Allow anyone to register
 
     def create(self, request, *args, **kwargs):
@@ -18,7 +25,7 @@ class RegisterView(generics.CreateAPIView):
         #1. Validate data
         serializer.is_valid(raise_exception=True)
 
-        #2. Trigger the create() method in RegisterSerializer
+        #2. Trigger the create() method in RegisterAdminSerializer
         user = serializer.save()
 
         #3. Return a custom success message
@@ -28,51 +35,138 @@ class RegisterView(generics.CreateAPIView):
                 'email': user.email,
                 'role': user.role,
             },
-            'message': 'User and Profile created successfully.'
+            'message': 'User and Profile for Admin created successfully.'
         }, status=status.HTTP_201_CREATED)
+
+
+
+
+
+class RegisterTeacherView(generics.CreateAPIView):
+    serializer_class = RegisterTeacherSerializer
+    permission_classes = [AllowAny] #Allow anyone to register
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+
+        #1. Validate data
+        serializer.is_valid(raise_exception=True)
+
+        #2. Trigger the create() method in RegisterAdminSerializer
+        user = serializer.save()
+
+        #3. Return a custom success message
+        return Response({
+            'user': {
+                'username': user.username,
+                'email': user.email,
+                'role': user.role,
+            },
+            'message': 'User and Profile for Teacher created successfully.'
+        }, status=status.HTTP_201_CREATED)
+
+
+
+
+
+
+class RegisterStudentView(generics.CreateAPIView):
+    serializer_class = RegisterStudentSerializer
+    permission_classes = [AllowAny] #Allow anyone to register
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+
+        #1. Validate data
+        serializer.is_valid(raise_exception=True)
+
+        #2. Trigger the create() method in RegisterAdminSerializer
+        user = serializer.save()
+
+        #3. Return a custom success message
+        return Response({
+            'user': {
+                'username': user.username,
+                'email': user.email,
+                'role': user.role,
+            },
+            'message': 'User and Profile for Student created successfully.'
+        }, status=status.HTTP_201_CREATED)
+
+
+
+
+
+
+class ProfileView(generics.RetrieveUpdateAPIView):
+    """
+    API endpoint for the current user to view or update their own profile.
     
-class UserProfileView(generics.RetrieveUpdateAPIView):
+    Methods:
+    - GET: Retrieve profile details for the authenticated user.
+    - PATCH: Partially update profile fields (e.g., bio, avatar).
     """
-    GET: Returns the logged-in user's profile.
-    PATCH: Allows the user to update their own profile.
-    """
+
+    # Explicitly restrict methods to prevent full PUT updates or deletions
+    http_method_names = ['get', 'patch', 'head', 'options']
+
     serializer_class = ProfileSerializer
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
-        # It finds the profile where the 'user' matches the person logged in.
+        """
+        Overrides the default behavior to ensure a user can only 
+        access the profile associated with their account.
+        
+        This eliminates the need for a lookup URL kwarg (like /profile/<id>/)
+        and prevents unauthorized access to other users' data.
+        """
+        # # Fetch the profile linked to the logged-in user
         profile = get_object_or_404(Profile, user=self.request.user)
         return profile
-    
-class AcademicYearVerificationView(generics.ListCreateAPIView):
+
+
+
+
+
+class VerificationView(generics.ListCreateAPIView):
     """
-    GET:  Admin/Teacher views verifications.
-    POST: Admin/Teacher creates a verification for a student.
+    Handles listing and creating verification records.
+    - LIST: Returns records based on user role (Admin=All, Teacher=Department).
+    - CREATE: Records a new verification and automatically logs the creator.
     """
-    serializer_class = AcademicYearVerificationSerializer
+    serializer_class = VerificationSerializer
     permission_classes = [IsAuthenticated, IsAdminOrTeacher]
 
     def get_queryset(self):
-        # Get the currently authenticated user making the request
+        """
+        Dynamically filters the available records based on the user's role.
+        This ensures data isolation between different departments.
+        """
         user = self.request.user
 
-        # Admins can view all academic year verification records
+        # Admin Override: Grant visibility into every record in the system
         if user.role == user.Role.ADMIN:
-            return AcademicYearVerification.objects.all()
+            return Verification.objects.all()
 
-        # Teachers can only view verification records belonging
-        # to users within the same academic discipline
+        # Departmental Filter: Restrict Teachers to seeing only 'their' students.
+        # We traverse Verification -> User -> Profile -> Department.
         if user.role == user.Role.TEACHER:
-            teacher_discipline = getattr(user.profile, 'discipline', None)
-            return AcademicYearVerification.objects.filter(
-                user__profile__discipline=teacher_discipline
-            )
+            teacher_department = getattr(user.profile, 'department', None)
+            return Verification.objects.filter(
+                student__profile__department=teacher_department
+            ).select_related('student__profile') # Optimization to reduce DB hits
 
-        # Any other role has no permission to view these records
-        return AcademicYearVerification.objects.none()
+        # Security Fallback: If role is undefined, return an empty set
+        return Verification.objects.none()
 
     def perform_create(self, serializer):
-        serializer.save(verified_by=self.request.user)
+        """
+        Automatically assigns the currently logged-in Admin/Teacher 
+        as the verifier for the record.
+        """
+        # Inject the current user into the 'verified_by' field during save
+        serializer.save(verifier=self.request.user)
 
 
 class ChangePasswordView(generics.UpdateAPIView):

@@ -1,5 +1,8 @@
 from rest_framework import serializers
-from projects.models import User, Admin, Teacher, Student, Profile, Verification, Institution, Department
+from projects.models import (
+    User, Admin, Teacher, Student, Profile, 
+    Verification, Institution, Department
+)
 from projects.models import Verification, VerificationStatus
 
 from projects.services import ALLOWED_TRANSITIONS
@@ -223,16 +226,50 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 
+
+class AdminSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Admin
+        fields = ['staff_number', 'created_at']
+
+
+
+
+
+class TeacherSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Teacher
+        fields = ['title', 'rank','staff_number', 'created_at']
+
+
+
+
+class StudentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Student
+        fields = ['matric_number', 'entry_date', 'verification_status', 'created_at']
+
+
+
+
+
 class ProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(many=False, read_only=True)
     full_name = serializers.ReadOnlyField() #From @property
     institution = serializers.StringRelatedField()
     department = serializers.StringRelatedField()
+
+     # role-specific nested data
+    student_profile = StudentSerializer(read_only=True)
+    teacher_profile = TeacherSerializer(read_only=True)
+    admin_profile = AdminSerializer(read_only=True)
+
     class Meta:
         model = Profile
         fields = [
             'id', 'user', 'full_name', 
             'institution', 'department',
+            'student_profile', 'teacher_profile', 'admin_profile',
             'bio', 'avatar_url', 
             'created_at'
             ]
