@@ -5,7 +5,7 @@ from projects.models import (
 )
 from projects.models import Verification, VerificationStatus
 
-from projects.services import ALLOWED_TRANSITIONS
+from projects.services.verification_status_service import ALLOWED_TRANSITIONS
 
 from projects.services.admin_service import create_admin_user
 from projects.services.teacher_service import create_teacher_user
@@ -52,18 +52,20 @@ class RegisterAdminSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, data):
-        """
-        Object-level validation: Checks the relationship between Institution and Department.
-        Prevents a user from picking a Department that doesn't belong to the selected Institution.
-        """
         institution = data.get('institution')
         department = data.get('department')
 
         if department and institution:
-            # Check the 'chain': Department -> Faculty -> Institution
-            if not department.faculty or department.faculty.institution != institution:
+            # We check if a department exists that matches the ID AND the institution
+            # This is one database hit and handles all "chain" logic at once.
+            exists = Department.objects.filter(
+                id=department.id,
+                faculty__institution=institution
+            ).exists()
+
+            if not exists:
                 raise serializers.ValidationError({
-                    "department": "This department does not belong to the selected institution."
+                    "department": f"The department '{department.name}' does not belong to {institution.name}."
                 })
 
         return data
@@ -177,7 +179,7 @@ class RegisterStudentSerializer(serializers.ModelSerializer):
         """
         Field-level validation: Ensures matric numbers are unique in the Student table.
         """
-        if Student.objects.filter(staff_number=value).exists():
+        if Student.objects.filter(matric_number=value).exists():
             raise serializers.ValidationError(
                 "A Student with this matric number already exists"
             )

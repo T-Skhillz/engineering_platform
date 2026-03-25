@@ -1,0 +1,122 @@
+[
+{
+  "model": "projects.institution",
+  "pk": "48686e33-0fdd-4149-b1f7-87b31dec6a5d",
+  "fields": {
+    "name": "University of Lagos",
+    "short_name": "UNILAG"
+  }
+},
+{
+  "model": "projects.institution",
+  "pk": "a4ed3c37-15f9-4e10-bb1a-793c5d5b9ae2",
+  "fields": {
+    "name": "University of Ibadan",
+    "short_name": "UI"
+  }
+},
+{
+  "model": "projects.institution",
+  "pk": "e18cbc30-d0d7-40b2-9aa5-5ebe6bcc9bf7",
+  "fields": {
+    "name": "Obafemi Awolowo University",
+    "short_name": "OAU"
+  }
+},
+{
+  "model": "projects.faculty",
+  "pk": "30e69dd2-552a-428e-9526-7f238494b452",
+  "fields": {
+    "institution": "e18cbc30-d0d7-40b2-9aa5-5ebe6bcc9bf7",
+    "name": "Technology"
+  }
+},
+{
+  "model": "projects.faculty",
+  "pk": "4197029a-0159-48c5-8853-585124e8ba01",
+  "fields": {
+    "institution": "a4ed3c37-15f9-4e10-bb1a-793c5d5b9ae2",
+    "name": "Technology"
+  }
+},
+{
+  "model": "projects.faculty",
+  "pk": "c41abb06-9659-41e2-b18f-2dfc3402d6dd",
+  "fields": {
+    "institution": "e18cbc30-d0d7-40b2-9aa5-5ebe6bcc9bf7",
+    "name": "Arts"
+  }
+},
+{
+  "model": "projects.faculty",
+  "pk": "ecc89233-d3e5-4bcc-923b-409b616e2b9e",
+  "fields": {
+    "institution": "48686e33-0fdd-4149-b1f7-87b31dec6a5d",
+    "name": "Technology"
+  }
+},
+{
+  "model": "projects.faculty",
+  "pk": "f73d4850-6b24-41fb-83c0-9c6b1a3d2205",
+  "fields": {
+    "institution": "a4ed3c37-15f9-4e10-bb1a-793c5d5b9ae2",
+    "name": "Arts"
+  }
+},
+{
+  "model": "projects.department",
+  "pk": "0b45d5eb-7c32-4b45-ab99-3f03b296a022",
+  "fields": {
+    "faculty": "f73d4850-6b24-41fb-83c0-9c6b1a3d2205",
+    "name": "History"
+  }
+},
+{
+  "model": "projects.department",
+  "pk": "57e989dd-aa4c-4acd-8d0a-fca0eff005cc",
+  "fields": {
+    "faculty": "30e69dd2-552a-428e-9526-7f238494b452",
+    "name": "Mechanical Engineering"
+  }
+},
+{
+  "model": "projects.department",
+  "pk": "72ea592d-bd9e-4c1c-9336-4866e39d4b29",
+  "fields": {
+    "faculty": "4197029a-0159-48c5-8853-585124e8ba01",
+    "name": "Medical Science"
+  }
+},
+{
+  "model": "projects.department",
+  "pk": "788a9b8d-98e7-48f9-96aa-8409a378180e",
+  "fields": {
+    "faculty": "30e69dd2-552a-428e-9526-7f238494b452",
+    "name": "Computer Science and Engineering"
+  }
+},
+{
+  "model": "projects.department",
+  "pk": "8972a8d0-812d-49a2-a765-2a5ebab20b9a",
+  "fields": {
+    "faculty": "30e69dd2-552a-428e-9526-7f238494b452",
+    "name": "Material Science and Engineering"
+  }
+},
+{
+  "model": "projects.department",
+  "pk": "8df42adc-0ed3-4c1d-a438-3da7269b98a3",
+  "fields": {
+    "faculty": "f73d4850-6b24-41fb-83c0-9c6b1a3d2205",
+    "name": "English"
+  }
+},
+{
+  "model": "projects.department",
+  "pk": "a106e202-cc23-4253-8c77-c9752c3a7ca7",
+  "fields": {
+    "faculty": "4197029a-0159-48c5-8853-585124e8ba01",
+    "name": "Computer Science"
+  }
+}
+]
