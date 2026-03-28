@@ -25,8 +25,8 @@ def process_student_verification(user, status, verifier=None, session=None):
     # Use atomic transaction to ensure the log entry and status update are bundled
     with transaction.atomic():
         # Lock the student row to prevent race conditions during status updates
-        student = Student.objects.select_for_update().get(profile__user=user)
-        current_status = student.verification_status
+        student_profile = Student.objects.select_for_update().get(profile__user=user)
+        current_status = student_profile.verification_status
 
         # Validate against the state machine logic
         if status not in ALLOWED_TRANSITIONS.get(current_status, set()):
@@ -40,17 +40,17 @@ def process_student_verification(user, status, verifier=None, session=None):
 
         # Create an audit trail entry for this verification action
         verification = Verification.objects.create(
-            user=user,
+            student=user,
             verifier=verifier,
             session=session,
             status=status
         )
 
         # Synchronize the Student record with the new state
-        student.verification_status = status
-        student.verified_at = (
+        student_profile.verification_status = status
+        student_profile.verified_at = (
             timezone.now() if status == VerificationStatus.VERIFIED else None
         )
-        student.save()
+        student_profile.save()
 
-        return verification, student
+        return verification, student_profile

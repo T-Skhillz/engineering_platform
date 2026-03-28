@@ -12,6 +12,11 @@ from projects.services.teacher_service import create_teacher_user
 from projects.services.student_service import create_student_user
 from projects.services.verification_status_service import process_student_verification 
 
+import logging
+
+
+# Get an instance of a logger
+logger = logging.getLogger('projects')
 
 
 class RegisterAdminSerializer(serializers.ModelSerializer):
@@ -302,32 +307,31 @@ class VerificationSerializer(serializers.ModelSerializer):
         # Prevents client-side tampering with system-controlled fields
         read_only_fields = ['id', 'user', 'created_at', 'verifier']
 
+
     def validate(self, data):
-        """
-        Cross-field validation to ensure the student exists and the 
-        requested status transition is valid for their current state.
-        """
         matric_number = data.get('matric_number')
         
-        # 1. Identity Resolution: Map the external matric_number to an internal User object
         try:
-            # Select_related or prefetch_related should be handled in the ViewSet 
-            # for performance, but we perform the existence check here.
-            user = User.objects.get(profile__student__matric_number=matric_number)
-            data['user'] = user
-        except User.DoesNotExist:
-            raise serializers.ValidationError({"matric_number": "No student found with this matric number."})
-
-        # 2. State Machine Enforcement: 
-        # Prevent "illegal" jumps (e.g., from 'Pending' to 'Re-issued' directly)
-        current_status = user.profile.student.verification_status
-        new_status = data.get('status')
-
-        if new_status not in ALLOWED_TRANSITIONS.get(current_status, set()):
-            raise serializers.ValidationError(
-                f"Transition error: Moving from '{current_status}' to '{new_status}' is not permitted."
+            # 1. We have to find the STUDENT record first to get the User
+            # Because the 'matric_number' lives on the Student model
+            student_profile = Student.objects.select_related('profile__user').get(
+                matric_number=matric_number
             )
             
+            # 2. Extract the User object from that relationship
+            user_to_verify = student_profile.profile.user
+            
+            # 3. Assign this User to the 'student' field (as per your new model)
+            data['student'] = user_to_verify
+            
+            # Optional: Print to verify it's working
+            print(f"Found User: {user_to_verify.username} with Matric: {matric_number}")
+
+        except Student.DoesNotExist:
+            raise serializers.ValidationError({
+                "matric_number": "No student found with this matric number."
+            })
+        
         return data
 
     def create(self, validated_data):
@@ -340,12 +344,12 @@ class VerificationSerializer(serializers.ModelSerializer):
 
         # Audit Trail: Identify the admin/teacher performing the action
         verifier = self.context['request'].user
-        
+
         try:
             # We delegate to process_student_verification to keep this Serializer 
             # lean and ensure this logic is reusable outside of the API context.
             verification, _ = process_student_verification(
-                user=validated_data['user'],
+                user=validated_data['student'],
                 status=validated_data['status'],
                 verifier=verifier,
                 session=validated_data.get('session')
@@ -396,6 +400,55 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # def validate(self, data):
+    #     """
+    #     Cross-field validation to ensure the student exists and the 
+    #     requested status transition is valid for their current state.
+    #     """
+    #     matric_number = data.get('matric_number')
+        
+    #     # 1. Identity Resolution: Map the external matric_number to an internal User object
+    #     try:
+    #         # Select_related or prefetch_related should be handled in the ViewSet 
+    #         # for performance, but we perform the existence check here.
+    #         student = Verification.objects.get(student__matric_number=matric_number)
+    #         data['user'] = student
+
+    #         # Log the success at the DEBUG level
+    #         logger.debug(f"Successfully validated student: {student}")
+
+    #     except Verification.DoesNotExist:
+    #         # Log the failure at a WARNING level
+    #         logger.warning(f"Validation failed: Matric {matric_number} not found.")
+    #         raise serializers.ValidationError({"matric_number": "No student found with this matric number."})
+
+    #     # 2. State Machine Enforcement: 
+    #     # Prevent "illegal" jumps (e.g., from 'Pending' to 'Re-issued' directly)
+    #     current_status = student.profile.student.verification_status
+    #     new_status = data.get('status')
+
+    #     if new_status not in ALLOWED_TRANSITIONS.get(current_status, set()):
+    #         raise serializers.ValidationError(
+    #             f"Transition error: Moving from '{current_status}' to '{new_status}' is not permitted."
+    #         )
+            
+    #     return data
 
 
 
