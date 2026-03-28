@@ -1,6 +1,9 @@
 from django.db import transaction
 from django.utils import timezone
 from projects.models import Verification, Student, VerificationStatus
+from projects.permissions import check_teacher_can_verify_student
+
+
 
 # Defines the valid state machine transitions to ensure data integrity
 ALLOWED_TRANSITIONS = {
@@ -14,6 +17,8 @@ ALLOWED_TRANSITIONS = {
     VerificationStatus.VERIFIED: set(), # Terminal state; no further changes allowed
 }
 
+
+
 def process_student_verification(user, status, verifier=None, session=None):
     """
     Updates a student's verification status, enforces state transitions, 
@@ -21,6 +26,10 @@ def process_student_verification(user, status, verifier=None, session=None):
     """
     if status not in VerificationStatus.values:
         raise ValueError(f"Invalid status: {status}")
+    
+    # CHECK: Teacher can't verify students from other departments
+    if verifier:
+        check_teacher_can_verify_student(verifier, user)
 
     # Use atomic transaction to ensure the log entry and status update are bundled
     with transaction.atomic():
@@ -40,7 +49,8 @@ def process_student_verification(user, status, verifier=None, session=None):
 
         # Create an audit trail entry for this verification action
         verification = Verification.objects.create(
-            student=user,
+            student=user
+            ,
             verifier=verifier,
             session=session,
             status=status

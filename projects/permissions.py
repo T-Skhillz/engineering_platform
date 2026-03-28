@@ -41,3 +41,21 @@ class IsAdminOrTeacher(permissions.BasePermission):
                 return False
 
         return False
+    
+
+def check_teacher_can_verify_student(teacher, student_user):
+    """
+    Validates that a teacher belongs to the same department as the student.
+    Raises ValueError if unauthorized.
+    """
+    if teacher.role != teacher.Role.TEACHER:
+        return # Admins or other roles bypass this check
+
+    teacher_dept = getattr(getattr(teacher, 'profile', None), 'department', None)
+    student_dept = getattr(getattr(student_user, 'profile', None), 'department', None)
+
+    if not teacher_dept:
+        raise ValueError("Teacher is not assigned to a department.")
+
+    if teacher_dept != student_dept:
+        raise ValueError(f"Teacher/Student department mismatch: {teacher_dept} vs {student_dept}")

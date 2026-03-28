@@ -138,6 +138,7 @@ class VerificationView(generics.ListCreateAPIView):
     serializer_class = VerificationSerializer
     permission_classes = [IsAuthenticated, IsAdminOrTeacher]
 
+
     def get_queryset(self):
         """
         Dynamically filters the available records based on the user's role.
@@ -149,13 +150,19 @@ class VerificationView(generics.ListCreateAPIView):
         if user.role == user.Role.ADMIN:
             return Verification.objects.all()
 
-        # Departmental Filter: Restrict Teachers to seeing only 'their' students.
-        # We traverse Verification -> User -> Profile -> Department.
         if user.role == user.Role.TEACHER:
-            teacher_department = getattr(user.profile, 'department', None)
+            # Use ID for comparison to avoid unnecessary DB lookups or object mismatches
+            teacher_dept_id = getattr(user.profile, 'department_id', None)
+
+            # Restrict visibility: Teachers without a department assignment see no records
+            if not teacher_dept_id:
+                return Verification.objects.none()
+
+            # Limit verifications to the teacher's department and eager-load related
+            # student profile + department to avoid N+1 queries.
             return Verification.objects.filter(
-                student__profile__department=teacher_department
-            ).select_related('student__profile') # Optimization to reduce DB hits
+                student__profile__department=teacher_dept_id
+            ).select_related('student__profile')
 
         # Security Fallback: If role is undefined, return an empty set
         return Verification.objects.none()
@@ -167,6 +174,9 @@ class VerificationView(generics.ListCreateAPIView):
         """
         # Inject the current user into the 'verified_by' field during save
         serializer.save(verifier=self.request.user)
+
+
+
 
 
 class ChangePasswordView(generics.UpdateAPIView):
@@ -206,6 +216,9 @@ class ChangePasswordView(generics.UpdateAPIView):
             'access': str(new_refresh.access_token),
             'refresh': str(new_refresh),
         }, status=status.HTTP_200_OK)
+    
+
+
 
 
 class LogoutView(generics.GenericAPIView):

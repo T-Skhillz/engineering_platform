@@ -12,11 +12,8 @@ from projects.services.teacher_service import create_teacher_user
 from projects.services.student_service import create_student_user
 from projects.services.verification_status_service import process_student_verification 
 
-import logging
 
 
-# Get an instance of a logger
-logger = logging.getLogger('projects')
 
 
 class RegisterAdminSerializer(serializers.ModelSerializer):
@@ -301,11 +298,11 @@ class VerificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Verification
         fields = [
-            'id', 'verifier', 'session', 
+            'id', 'student', 'verifier', 'session', 
             'status', 'created_at', 'matric_number'
         ]
         # Prevents client-side tampering with system-controlled fields
-        read_only_fields = ['id', 'user', 'created_at', 'verifier']
+        read_only_fields = ['id', 'user', 'student', 'created_at', 'verifier']
 
 
     def validate(self, data):
