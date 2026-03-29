@@ -51,6 +51,7 @@ class Department(models.Model):
     )
     faculty = models.ForeignKey(Faculty, on_delete=models.CASCADE, related_name='departments')
     name = models.CharField(max_length=150)
+    
 
     class Meta:
         verbose_name = "Department"
