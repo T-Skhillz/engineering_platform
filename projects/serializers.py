@@ -309,7 +309,7 @@ class VerificationSerializer(serializers.ModelSerializer):
             'status', 'created_at', 'matric_number'
         ]
         # Prevents client-side tampering with system-controlled fields
-        read_only_fields = ['id', 'user', 'student', 'created_at', 'verifier']
+        read_only_fields = ['id', 'student', 'created_at', 'verifier']
 
 
     def validate(self, data):
@@ -328,9 +328,6 @@ class VerificationSerializer(serializers.ModelSerializer):
             # 3. Assign this User to the 'student' field (as per your new model)
             data['student'] = user_to_verify
             
-            # Optional: Print to verify it's working
-            print(f"Found User: {user_to_verify.username} with Matric: {matric_number}")
-
         except Student.DoesNotExist:
             raise serializers.ValidationError({
                 "matric_number": "No student found with this matric number."
