@@ -1,4 +1,4 @@
-from django.shortcuts import get_object_or_404
+from django.http import Http404
 from projects.models import Profile, Verification
 from projects.serializers import RegisterAdminSerializer, RegisterTeacherSerializer, RegisterStudentSerializer, ProfileSerializer, VerificationSerializer, ChangePasswordSerializer
 from rest_framework import generics, status
@@ -10,6 +10,8 @@ from rest_framework.response import Response
 
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
+
+from projects.services.academic_year_service import get_profile_with_metadata
 
 
 
@@ -113,16 +115,26 @@ class ProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = ProfileSerializer
     permission_classes = [IsAuthenticated]
 
-    def get_object(self):
-        """
-        Overrides the default behavior to ensure a user can only 
-        access the profile associated with their account.
+    # def get_object(self):
+    #     """
+    #     Overrides the default behavior to ensure a user can only 
+    #     access the profile associated with their account.
         
-        This eliminates the need for a lookup URL kwarg (like /profile/<id>/)
-        and prevents unauthorized access to other users' data.
-        """
-        # # Fetch the profile linked to the logged-in user
-        profile = get_object_or_404(Profile, user=self.request.user)
+    #     This eliminates the need for a lookup URL kwarg (like /profile/<id>/)
+    #     and prevents unauthorized access to other users' data.
+    #     """
+    #     # # Fetch the profile linked to the logged-in user
+    #     profile = get_object_or_404(Profile, user=self.request.user)
+    #     return profile
+
+    def get_object(self):
+        # Call the service which handles the JOINs and Annotations
+        profile = get_profile_with_metadata(self.request.user)
+        # We manually bridge the annotated value to the nested object 
+        # so the Serializer can find it easily.
+        if profile.student_profile:
+            profile.student_profile.academic_year = profile.academic_year
+            
         return profile
 
 

@@ -11,6 +11,7 @@ from projects.services.admin_service import create_admin_user
 from projects.services.teacher_service import create_teacher_user
 from projects.services.student_service import create_student_user
 from projects.services.verification_status_service import process_student_verification 
+# from projects.services.academic_year_service import get_academic_year
 
 
 
@@ -249,9 +250,15 @@ class TeacherSerializer(serializers.ModelSerializer):
 
 
 class StudentSerializer(serializers.ModelSerializer):
+    # This reads the 'academic_year' we annotated in the service
+    academic_year = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = Student
-        fields = ['matric_number', 'entry_date', 'verification_status', 'created_at']
+        fields = [
+            'matric_number', 'entry_date', 'verification_status', 
+                  'academic_year', 'created_at'
+            ]
 
 
 
