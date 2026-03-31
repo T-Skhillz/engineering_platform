@@ -115,9 +115,9 @@ Institution/Department relationship is validated at registration: a department t
 ## Authentication
 
 Uses `djangorestframework-simplejwt`.
-
-- Access token lifetime: **7 hours**
-- Refresh token lifetime: **1 day**
+                                     ___   
+- Access token lifetime: **7 hours**    |  **High for development purposes**
+- Refresh token lifetime: **1 day**  ___| 
 - Refresh tokens rotate on use (`ROTATE_REFRESH_TOKENS = True`)
 - Used tokens are blacklisted immediately (`BLACKLIST_AFTER_ROTATION = True`)
 
